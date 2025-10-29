@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Versículo do Dia</title>
+    <meta name="theme-color" content="#2e7d32">
+    <link rel="manifest" href="manifest.json">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #2e7d32, #1b5e20);
+            padding: 20px;
+            text-align: center;
+        }
+        .container {
+            background: white;
+            padding: 40px 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            max-width: 500px;
+        }
+        .icon {
+            font-size: 3em;
+            margin-bottom: 20px;
+        }
+        .versiculo {
+            font-size: 1.4em;
+            font-style: italic;
+            line-height: 1.6;
+            color: #333;
+            margin-bottom: 25px;
+        }
+        .referencia {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #2e7d32;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .instrucao {
+            margin-top: 25px;
+            font-size: 0.9em;
+            color: #666;
+            line-height: 1.4;
+        }
+        .atualizar {
+            background-color: #2e7d32;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 50px;
+            font-size: 1em;
+            margin-top: 20px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .atualizar:hover {
+            background-color: #1b5e20;
+        }
+        .loading {
+            color: #666;
+            font-style: italic;
+        }
+        .error {
+            color: #d32f2f;
+        }
+        .success {
+            color: #2e7d32;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">📖</div>
+        <div class="versiculo" id="versiculoTexto">Conectando com a fonte dos versículos...</div>
+        <div class="referencia" id="versiculoReferencia"></div>
+        
+        <button class="atualizar" onclick="buscarVersiculoAleatorio()">🔄 Buscar Novo Versículo</button>
+        <div id="status" class="success"></div>
+        
+        <div class="instrucao">
+            💡 <strong>Para instalar este app no seu iPhone:</strong><br>
+            1. Clique no botão de compartilhar (⎙)<br>
+            2. Role e selecione "Adicionar à Tela de Início"
+        </div>
+    </div>
+
+    <script>
+        // Vamos tentar várias estratégias diferentes para conseguir os versículos
+        async function buscarVersiculoAleatorio() {
+            document.getElementById('versiculoTexto').textContent = 'Buscando versículo da Bíblia...';
+            document.getElementById('versiculoReferencia').textContent = '';
+            document.getElementById('status').textContent = 'Conectando...';
+            document.getElementById('versiculoTexto').className = 'versiculo loading';
+
+            // Estratégia 1: Tentar API alternativa em português
+            try {
+                console.log('Tentando estratégia 1: API alternativa...');
+                
+                // Usando uma API diferente que é conhecida por funcionar
+                const resposta = await fetch('https://bible-api.com/?random=verse&translation=almeida');
+                
+                if (resposta.ok) {
+                    const dados = await resposta.json();
+                    
+                    // Verificar se veio em português (Almeida)
+                    if (dados.translation_id === 4 || dados.translation_name?.includes('Almeida')) {
+                        document.getElementById('versiculoTexto').textContent = `"${dados.text}"`;
+                        document.getElementById('versiculoReferencia').textContent = dados.reference;
+                        document.getElementById('status').textContent = 'Versículo em português carregado!';
+                        document.getElementById('versiculoTexto').className = 'versiculo';
+                        
+                        localStorage.setItem('ultimoVersiculo', JSON.stringify({
+                            text: dados.text,
+                            reference: dados.reference,
+                            timestamp: new Date().getTime()
+                        }));
+                        return;
+                    }
+                }
+            } catch (erro1) {
+                console.log('Estratégia 1 falhou:', erro1);
+            }
+
+            // Estratégia 2: Usar CORS Proxy profissional
+            try {
+                console.log('Tentando estratégia 2: CORS Proxy...');
+                const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+                const apiUrl = 'https://www.abibliadigital.com.br/api/verses/nvi/random';
+                
+                const resposta = await fetch(proxyUrl + apiUrl, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                if (resposta.ok) {
+                    const dados = await resposta.json();
+                    
+                    document.getElementById('versiculoTexto').textContent = `"${dados.text}"`;
+                    document.getElementById('versiculoReferencia').textContent = `${dados.book.name} ${dados.chapter}:${dados.number}`;
+                    document.getElementById('status').textContent = 'Versículo da Bíblia Digital carregado!';
+                    document.getElementById('versiculoTexto').className = 'versiculo';
+                    
+                    localStorage.setItem('ultimoVersiculo', JSON.stringify({
+                        text: dados.text,
+                        reference: `${dados.book.name} ${dados.chapter}:${dados.number}`,
+                        timestamp: new Date().getTime()
+                    }));
+                    return;
+                }
+            } catch (erro2) {
+                console.log('Estratégia 2 falhou:', erro2);
+            }
+
+            // Estratégia 3: Tentar direct com headers diferentes
+            try {
+                console.log('Tentando estratégia 3: Direct call...');
+                const resposta = await fetch('https://www.abibliadigital.com.br/api/verses/nvi/random', {
+                    method: 'GET',
+                    mode: 'cors',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (resposta.ok) {
+                    const dados = await resposta.json();
+                    
+                    document.getElementById('versiculoTexto').textContent = `"${dados.text}"`;
+                    document.getElementById('versiculoReferencia').textContent = `${dados.book.name} ${dados.chapter}:${dados.number}`;
+                    document.getElementById('status').textContent = 'Conexão direta funcionou!';
+                    document.getElementById('versiculoTexto').className = 'versiculo';
+                    
+                    localStorage.setItem('ultimoVersiculo', JSON.stringify({
+                        text: dados.text,
+                        reference: `${dados.book.name} ${dados.chapter}:${dados.number}`,
+                        timestamp: new Date().getTime()
+                    }));
+                    return;
+                }
+            } catch (erro3) {
+                console.log('Estratégia 3 falhou:', erro3);
+            }
+
+            // Se todas as estratégias falharem
+            document.getElementById('versiculoTexto').textContent = 'Não foi possível conectar com o servidor de versículos no momento.';
+            document.getElementById('versiculoReferencia').textContent = '';
+            document.getElementById('status').textContent = 'Tente novamente em alguns instantes';
+            document.getElementById('versiculoTexto').className = 'versiculo error';
+        }
+
+        // Carrega versículo salvo ou busca novo
+        function carregarVersiculo() {
+            const versiculoSalvo = localStorage.getItem('ultimoVersiculo');
+            
+            if (versiculoSalvo) {
+                try {
+                    const dados = JSON.parse(versiculoSalvo);
+                    const hoje = new Date();
+                    const dataSalvo = new Date(dados.timestamp);
+                    
+                    // Se é do mesmo dia, mostra o salvo enquanto carrega novo
+                    if (hoje.toDateString() === dataSalvo.toDateString()) {
+                        document.getElementById('versiculoTexto').textContent = `"${dados.text}"`;
+                        document.getElementById('versiculoReferencia').textContent = dados.reference;
+                        document.getElementById('status').textContent = 'Versículo salvo - atualizando...';
+                    }
+                } catch (e) {
+                    console.log('Erro ao carregar versículo salvo');
+                }
+            }
+            
+            // Busca novo versículo
+            buscarVersiculoAleatorio();
+        }
+
+        // Inicia o app
+        document.addEventListener('DOMContentLoaded', carregarVersiculo);
+
+        // Atualiza a cada hora se a página estiver aberta
+        setInterval(buscarVersiculoAleatorio, 60 * 60 * 1000);
+    </script>
+</body>
+</html>
